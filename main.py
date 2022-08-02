@@ -1,3 +1,4 @@
+from email.mime import image
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QStatusBar,QFileDialog, QWidget, QApplication, QLabel, QGridLayout
 from PyQt5 import QtWidgets
@@ -18,6 +19,7 @@ import requests
 # dfr = DracoFaceRecognition()
 dfr = pickle.load( open("model.pickle" , 'rb'))
 faceDetect = cv2.CascadeClassifier('haar.xml')
+
 
 
 data = json.load(open('data.json'))['data']
@@ -201,15 +203,17 @@ class Input(QWidget):
         super().__init__()
         
 
-        self.setWindowTitle("Input Data")
-        self.setFixedWidth(300)
-        self.setFixedHeight(400)
+        self.setWindowTitle("Import Data")
+        self.setFixedWidth(200)
+        self.setFixedHeight(300)
 
         self.statusBar = QStatusBar()
         self.statusBar.setFont(QFont("Noto Sans", 7))
         self.statusBar.setFixedHeight(14)
         self.livestream = QtWidgets.QPushButton(self)
         self.livestream.setText('Live Import')
+        self.livestream.setFont(QFont('', 14))
+        self.livestream.setStyleSheet("margin: 10px 0 ; padding: 5px 3px;")
         self.livestream.clicked.connect(self.openLive)
         
         
@@ -242,10 +246,13 @@ class Input(QWidget):
         
         for fileName in fileNames:
             video_to_image(fileName)
+        QtWidgets.QMessageBox.about(self,"Message" , "                   \n   Done                   \n                      ")
 
     def add_import_video(self):
         self.button_add_import_video = QtWidgets.QPushButton(self)
         self.button_add_import_video.setText("Import Video")
+        self.button_add_import_video.setFont(QFont('', 14))
+        self.button_add_import_video.setStyleSheet("margin: 10px 0 ; padding: 5px 3px;")
         self.button_add_import_video.clicked.connect(self.import_video)
     def closeEvent(self, event):
         main.show()
@@ -261,6 +268,7 @@ class Input(QWidget):
 class Checkin(QWidget):
     def __init__(self):
         super().__init__()
+        self.time_sleep = 50
 
         self.setWindowTitle("Checkin")
         self.setFixedWidth(900)
@@ -295,10 +303,10 @@ class Checkin(QWidget):
         vbox = QGridLayout()
         vbox.addWidget(self.image_label, 0 , 0, 4 ,3)
         vbox.addWidget(self.statusBar , 4 , 0 , 1, 1)
-        vbox.addWidget(self.result, 0 , 4)
+        vbox.addWidget(self.result, 0 ,4 , 4 ,3 )
 
-        vbox.addWidget(self.submit, 3 , 3 )
-        vbox.addWidget(self.reset , 3 , 4)
+        vbox.addWidget(self.submit, 5 , 3 )
+        vbox.addWidget(self.reset , 5 , 4)
 
         self.hide_result_json = QLabel(self)
         self.hide_result_json.hide()
@@ -345,41 +353,44 @@ class Checkin(QWidget):
         #     self.result = QLabel(f'Id : {info["id"]} <br>Full Name: {info["full_name"]}<br>Birth: {info["birth"]}<br>Gender: {info["gender"]}<br>')
             # res = None        
     def keyPressEvent(self, e):
-        if e.key() == Qt.Key_SPACE:
-            self.close()
+        pass
 
 
     def convert_cv_qt(self, cv_img):
         rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
 
+        if(self.time_sleep > 0):
+            self.time_sleep -= 1
+        else:
+            self.time_sleep = 50
                 
-        gray = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
-        faceLoc, faceName = dfr.detect_known_faces(gray)
-        loc = (np.unique(faceLoc)).tolist()
-        name = (np.unique(faceName)).tolist()
-        if(len(loc)):
-            # self.thread.stop()
-            # self.submit.setEnabled(True)
-            # y1,x1,y2,x2= loc[0] , loc[1] , loc[2] , loc[3]
-            r = name[0].split('.')[0]
-            info = None
-            for i in data:
-                if(i['id'] == r):
-                    info = i
-                    break
-            if not info:
-                info = data[0]
-            else:
-                self.thread.stop()
-                self.submit.setEnabled(True)
+            gray = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+            faceLoc, faceName = dfr.detect_known_faces(gray)
+            loc = (np.unique(faceLoc)).tolist()
+            name = (np.unique(faceName)).tolist()
+            if(len(loc)):
+                # self.thread.stop()
+                # self.submit.setEnabled(True)
+                # y1,x1,y2,x2= loc[0] , loc[1] , loc[2] , loc[3]
+                r = name[0].split('.')[0]
+                info = None
+                for i in data:
+                    if(i['id'] == r):
+                        info = i
+                        break
+                if not info:
+                    info = data[0]
+                else:
+                    self.thread.stop()
+                    self.submit.setEnabled(True)
 
-            now = datetime.now()
+                now = datetime.now()
 
-            current_time = now.strftime(DATETIME_FORMAT)
-            info['time'] = current_time
+                current_time = now.strftime(DATETIME_FORMAT)
+                info['time'] = current_time
 
-            self.hide_result_json.setText(json.dumps(info))
-            self.result.setText(f'Id : {info["id"]} \nFull Name: {info["full_name"]}\nBirth: {info["birth"]}\nGender: {info["gender"]}\nTime:{info["time"]}\n')
+                self.hide_result_json.setText(json.dumps(info))
+                self.result.setText(f'Id : {info["id"]} \nFull Name: {info["full_name"]}\nBirth: {info["birth"]}\nGender: {info["gender"]}\nTime:{info["time"]}\n')
        
         h, w, ch = rgb_image.shape
         bytes_per_line = ch * w
@@ -391,6 +402,8 @@ class Checkin(QWidget):
 class Checkout(QWidget):
     def __init__(self):
         super().__init__()
+        self.time_sleep = 50
+
 
         self.setWindowTitle("Checkout")
         self.setFixedWidth(900)
@@ -474,42 +487,44 @@ class Checkout(QWidget):
         #     self.result = QLabel(f'Id : {info["id"]} <br>Full Name: {info["full_name"]}<br>Birth: {info["birth"]}<br>Gender: {info["gender"]}<br>')
             # res = None        
     def keyPressEvent(self, e):
-        if e.key() == Qt.Key_SPACE:
-            self.close()
+        pass
 
 
     def convert_cv_qt(self, cv_img):
         rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
 
-                
-        gray = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
-        faceLoc, faceName = dfr.detect_known_faces(gray)
-        loc = (np.unique(faceLoc)).tolist()
-        name = (np.unique(faceName)).tolist()
-        # print(name)
-        if(len(loc)):
-            # self.thread.stop()
-            # self.submit.setEnabled(True)
-            # y1,x1,y2,x2= loc[0] , loc[1] , loc[2] , loc[3]
-            r = name[0].split('.')[0]
-            info = None
-            for i in data:
-                if(i['id'] == r):
-                    info = i
-                    break
-            if not info:
-                info = data[0]
-            else:
-                self.thread.stop()
-                self.submit.setEnabled(True)
+        if(self.time_sleep > 0):
+            self.time_sleep -= 1
+        else:
+            self.time_sleep = 50
+            gray = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+            faceLoc, faceName = dfr.detect_known_faces(gray)
+            loc = (np.unique(faceLoc)).tolist()
+            name = (np.unique(faceName)).tolist()
+            # print(name)
+            if(len(loc)):
+                # self.thread.stop()
+                # self.submit.setEnabled(True)
+                # y1,x1,y2,x2= loc[0] , loc[1] , loc[2] , loc[3]
+                r = name[0].split('.')[0]
+                info = None
+                for i in data:
+                    if(i['id'] == r):
+                        info = i
+                        break
+                if not info:
+                    info = data[0]
+                else:
+                    self.thread.stop()
+                    self.submit.setEnabled(True)
 
-            now = datetime.now()
+                now = datetime.now()
 
-            current_time = now.strftime(DATETIME_FORMAT)
-            info['time'] = current_time
+                current_time = now.strftime(DATETIME_FORMAT)
+                info['time'] = current_time
 
-            self.hide_result_json.setText(json.dumps(info))
-            self.result.setText(f'Id : {info["id"]} \nFull Name: {info["full_name"]}\nBirth: {info["birth"]}\nGender: {info["gender"]}\nTime:{info["time"]}\n')
+                self.hide_result_json.setText(json.dumps(info))
+                self.result.setText(f'Id : {info["id"]} \nFull Name: {info["full_name"]}\nBirth: {info["birth"]}\nGender: {info["gender"]}\nTime:{info["time"]}\n')
 
         h, w, ch = rgb_image.shape
         bytes_per_line = ch * w
@@ -521,18 +536,40 @@ class Checkout(QWidget):
 class Main(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Demo Draco")
-        self.setFixedWidth(250)
-        self.setFixedHeight(250)
+        self.setAutoFillBackground(True)
+        self.setWindowTitle("FaceRecognition - DRACO")
+        self.setWindowIcon(QIcon("icondraco.png"))
+        self.setFixedWidth(400)
+        self.setFixedHeight(400)
         self.input_window = Input()
         self.checkin = Checkin()
         self.checkout = Checkout()
         self.add_button()
+
+        # self.setStyleSheet('background-color: white;')
+
+        # adding image to label
+        self.label = QLabel(self)
+        self.pixmap = QtGui.QPixmap('icondraco.png')
+        self.pixmap  = self.pixmap.scaled(150,150)
+
+        self.label.setPixmap(self.pixmap)
+        
+ 
+        # Optional, resize label to image size
+        self.label.resize(166, 62)
+
         vbox = QGridLayout()
-        self.widgets = [self.button_input , self.button_checkin , self.button_checkout ]
+        vbox.setContentsMargins(100 , 20 , 100 , 40)
+        vbox.setAlignment(Qt.AlignCenter)
+        self.widgets = [self.label , self.button_input , self.button_checkin , self.button_checkout ]
         for i in self.widgets:
             vbox.addWidget(i)
         self.setLayout(vbox)
+        
+
+
+
     def open_input(self):
         try:
             self.hide()
@@ -556,21 +593,28 @@ class Main(QWidget):
             error_dialog.showMessage('Oh no!')
     def add_button(self):
         self.button_input = QtWidgets.QPushButton(self)
-        self.button_input.setText("Input Data")
+        self.button_input.setText("Import Data")
+        self.button_input.setFont(QFont('', 14))
+        self.button_input.setStyleSheet("margin: 10px 0 ; padding: 5px 3px;")
         self.button_input.clicked.connect(self.open_input)
 
         self.button_checkin = QtWidgets.QPushButton(self)
-        self.button_checkin.setText("Checkin")
+        self.button_checkin.setText("Check in")
+        self.button_checkin.setFont(QFont('', 14))
+        self.button_checkin.setStyleSheet("margin: 10px 0 ; padding: 5px 3px;")
         self.button_checkin.clicked.connect(self.open_checkin)
 
         self.button_checkout = QtWidgets.QPushButton(self)
-        self.button_checkout.setText("Checkout")
+        self.button_checkout.setText("Check out")
+        self.button_checkout.setFont(QFont('', 14))
+        self.button_checkout.setStyleSheet("margin: 10px 0 ; padding: 5px 3px;")
         self.button_checkout.clicked.connect(self.open_checkout)
     def closeEvent(self, event):
         main.show()
         # self.thread.stop()
         event.accept()
         calculate_end_day()
+        # send_unmarked_day_to_save()
 class Verify(QWidget):
     def __init__(self):
         super().__init__()
@@ -647,33 +691,26 @@ def calculate_end_day():
 
     checkin.close()
     checkout.close()
+    send_unmarked_day_to_save()
 
 def send_unmarked_day_to_save():
-    url = "http://dev3.draco.net:8000/api/method/erpnext.hr.doctype.attendance.attendance.mark_bulk_attendance"
-    result = json.load(open('result.json'))['result']
-    request = []
-    for r in result:
-        unmarked = {
-            'doctype' : 'Attendance' , 
-            'attendance_date' : r['date'],
-            'status' : 'Present',
-            'company' : 'Fintech DRACO' , 
-            'employee' : r['id']
-        }
-        request.append(unmarked)
-    data = {'unmarked_days' : request}
-    print(data)
-    r = requests.get(url = url , params = data)
-    print(r.json())
-    # 'doctype': 'Attendance',
-	# 		'employee': data.employee,
-	# 		'attendance_date': get_datetime(date),
-	# 		'status': data.status,
-	# 		'company': company,
+    try:
+        url = "http://draco1.net:8000/api/method/erpnext.hr.doctype.attendance.attendance.mark_bulk_attendance"
+        result = json.load(open('result.json'))['result']
+        for per in result:
+            date = []
+            for r in result:
+                date.append(r['date'])
+            data = {'data' :{'unmarked_days' : date, 'employee' : per['id'] , 'status' : 'Present'}}
+            print(data)
+            r = requests.get(url = url , json = data , headers= {'Authorization' : "token bb638091c8a750d:892c8bdfc72506d"})
+            print(r.json())
+    except :
+        QtWidgets.QMessageBox.about("Error" , "Something went wrong , try again!!")
 
 
 if __name__=="__main__":
-    # main.show()
+    main.show()
     # calculate_end_day()
     # send_unmarked_day_to_save()
     sys.exit(app.exec_())
